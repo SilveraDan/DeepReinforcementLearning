@@ -1,0 +1,19 @@
+# Configuration pour différents environnements
+
+LineWorld:
+  states: [0, 1, 2, 3, 4]
+  actions: [0, 1]
+  rewards: [-1, 0, 1]
+  terminals: [0, 4]
+
+GridWorld:
+  states: [...]
+  actions: [...]
+  rewards: [...]
+  terminals: [...]
+
+OtherEnvironment:
+  states: [...]
+  actions: [...]
+  rewards: [...]
+  terminals: [...]
