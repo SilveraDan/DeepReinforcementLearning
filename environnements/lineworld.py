@@ -23,12 +23,12 @@ def display_state(state, length=5):
     print("".join(lineworld))
 
 
-def play_game(policy, P, R, start_state=2):
+def play_game(policy, P, R, T, start_state=2):
     state = start_state
     total_reward = 0
     steps = [state]
     display_state(state)  # Display initial state
-    while state not in [0, 4]:  # terminal states
+    while state not in T:  # terminal states
         action = np.argmax(policy[state])
         next_state = np.argmax(np.sum(P[state, action, :, :], axis=1))  # Correct the next state calculation
         reward_index = np.argmax(P[state, action, next_state, :])
