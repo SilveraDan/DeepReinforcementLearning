@@ -6,7 +6,7 @@ from environnements.gridworld import play_game as play_game_gridworld
 
 def choose_action(state, epsilon, Q, A):
     if random.uniform(0, 1) < epsilon:
-        return random.choice(range(len(A)))
+        return random.choice(A) - 1
     else:
         return np.argmax(Q[state])
 
