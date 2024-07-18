@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def create_lineworld(S, A, R):
     p = np.zeros((len(S), len(A), len(S), len(R)))
 
