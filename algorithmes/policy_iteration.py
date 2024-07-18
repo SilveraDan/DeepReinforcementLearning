@@ -1,5 +1,6 @@
 import numpy as np
-from environnements.lineworld import play_game
+from environnements.lineworld import play_game as play_game_lineworld
+from environnements.gridworld import play_game as play_game_gridworld
 
 
 def policy_evaluation(policy, P, S, R, gamma=0.999, theta=1e-6):
@@ -33,7 +34,7 @@ def policy_improvement(policy, V, P, S, A, R, gamma=0.999):
     return new_policy, policy_stable
 
 
-def policy_iteration(P, S, A, R, gamma=0.999):
+def policy_iteration(game, P, S, A, R, gamma=0.999):
     # Initialize policy as a 2D array with uniform distribution over actions
     policy = np.ones((len(S), len(A))) / len(A)
     iteration = 0
@@ -42,7 +43,11 @@ def policy_iteration(P, S, A, R, gamma=0.999):
         new_policy, policy_stable = policy_improvement(policy, V, P, S, A, R, gamma)
         iteration += 1
         print(f"Iteration: {iteration}")
-        steps, total_reward = play_game(policy, P, R)
+        match game:
+            case "lineworld":
+                steps, total_reward = play_game_lineworld(policy, P, R)
+            case "gridworld":
+                steps, total_reward = play_game_gridworld(policy, P, R)
         print(f"Steps: {steps}")
         print(f"Total Reward: {total_reward}")
         if policy_stable:
