@@ -9,10 +9,12 @@ def choose_action(state, epsilon, Q, A):
         return np.argmax(Q[state])
 
 
-def dyna_q(S, A, R, P, T, n_episodes, n_planning_steps, alpha, gamma, epsilon, start_state):
+def dyna_q_plus(S, A, R, P, T, n_episodes, n_planning_steps, alpha, gamma, k, epsilon, start_state):
     q_table = np.zeros((len(S), len(A)))
     policy = np.ones((len(S), len(A))) / len(A)
     model = {}
+    time_since_last_visit = np.zeros((len(S), len(A)))
+    timestep = 0
 
     for episode in range(n_episodes):
         state = start_state
@@ -30,15 +32,18 @@ def dyna_q(S, A, R, P, T, n_episodes, n_planning_steps, alpha, gamma, epsilon, s
 
             # Mise à jour du modèle
             model[(state, action)] = (reward, next_state)
+            time_since_last_visit[state, action] = timestep
 
             state = next_state
+            timestep += 1
 
             # Planification (n_planning_steps mises à jour avec le modèle)
             for _ in range(n_planning_steps):
                 if model:
                     s, a = random.choice(list(model.keys()))
                     r, s_prime = model[(s, a)]
-                    q_table[s, a] += alpha * (r + gamma * np.max(q_table[s_prime]) - q_table[s, a])
+                    bonus = k * np.sqrt(timestep - time_since_last_visit[s, a])
+                    q_table[s, a] += alpha * (r + bonus + gamma * np.max(q_table[s_prime]) - q_table[s, a])
 
     for state in range(len(S)):
         best_action = np.argmax(q_table[state])
