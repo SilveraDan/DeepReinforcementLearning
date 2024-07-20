@@ -7,14 +7,25 @@ LineWorld:
   terminals: [0, 4]
 
 GridWorld:
-  states: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-          16, 17, 18, 19, 20, 21, 22, 23, 24]
+  states: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
   actions: [1, 2, 3, 4] # Left, Right, Down, Up
   rewards: [-1, 0, 1] # (0,0), any other position, (4,4)
   terminals: [0, 1, 2, 3, 4, 5, 9, 10, 14, 15, 18, 19, 20, 21, 22, 23, 24] # lost, win
 
-OtherEnvironment:
-  states: [...]
-  actions: [...]
-  rewards: [...]
-  terminals: [...]
+TwoRoundRPS:
+  states: ['initial', 'first_round_rock', 'first_round_paper', 'first_round_scissors']
+  actions: [0, 1, 2] # Rock, Paper, Scissors
+  rewards: [-1, 0, 1] # Lose, Draw, Win
+  terminals: ['terminal'] # After two rounds
+
+MontyHall1:
+  states: ['A', 'B', 'C']
+  actions: [0, 1] # 0: Stay, 1: Switch
+  rewards: [0, 1] # Lose, Win
+  terminals: ['terminal']
+  
+MontyHall2:
+  states: ['A', 'B', 'C', 'D', 'E']
+  actions: [0, 1] # 0: Stay, 1: Switch
+  rewards: [0, 1] # Lose, Win
+  terminals: ['terminal']
