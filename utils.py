@@ -8,17 +8,31 @@ def load_config(config_file, env_name):
 
 def calcul_policy(Q):
     Pi = {}
-    for s in Q.keys():
-        best_a = None
-        best_a_score = 0.0
+    if type(Q) == dict:
+        for s in Q.keys():
+            best_a = None
+            best_a_score = 0.0
 
-        for a, a_score in Q[s].items():
-            if best_a is None or best_a_score <= a_score:
-                best_a = a
-                best_a_score = a_score
+            for a, a_score in Q[s].items():
+                if best_a is None or best_a_score <= a_score:
+                    best_a = a
+                    best_a_score = a_score
 
-        Pi[s] = best_a
-    return Pi
+            Pi[s] = best_a
+        return Pi
+    else:
+        for s in range(Q.shape[0]):
+            best_a = None
+            best_a_score = 0.0
+
+            for a in range(Q.shape[1]):
+                a_score = Q[s, a]
+                if best_a is None or best_a_score <= a_score:
+                    best_a = a
+                    best_a_score = a_score
+
+            Pi[s] = best_a
+        return Pi
 
 def play_a_game_by_Pi(env,Pi):
     while not env.is_game_over():
