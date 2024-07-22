@@ -5,7 +5,7 @@ import yaml
 import random
 import secret_envs_wrapper
 import pickle
-import lineworld as lw
+import environnements.lineworld2 as lw
 from utils import load_config, calcul_policy, play_a_game_by_Pi
 
 congig_file = "config.yaml"
