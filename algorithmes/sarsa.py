@@ -1,53 +1,89 @@
 import numpy as np
+from tqdm import tqdm
+import os
+import yaml
 import random
-from environnements.lineworld import play_game as play_game_lineworld
-from environnements.gridworld import play_game as play_game_gridworld
+import secret_envs_wrapper
+import pickle
+import environnements.lineworld2 as lw
+from utils import load_config, calcul_policy, play_a_game_by_Pi
+
+congig_file = "../config.yaml"
 
 
-def choose_action(state, epsilon, Q, A):
+def choose_action(Q, s, available_actions, epsilon):
     if random.uniform(0, 1) < epsilon:
-        return random.choice(A) - 1
+        a = random.choice(available_actions)
     else:
-        return np.argmax(Q[state])
+        q_s = [Q[s][a] for a in available_actions]
+        best_a_index = np.argmax(q_s)
+        a = available_actions[best_a_index]
+    return a
 
 
-def sarsa(game, S, A, R, P, T, num_episodes, alpha, gamma, epsilon, start_state):
-    # Initialisation de la fonction de valeur d'action Q
-    Q = np.zeros((len(S), len(A)))
-    policy = np.ones((len(S), len(A))) / len(A)
+def sarsa(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 100000, Q={}):
+    for _ in tqdm(range(nb_iter)):
+        # Initialize S
+        env.reset()
+        s = env.state_id()
+        available_actions = env.available_actions()
+        Q = update_Q(Q, s, available_actions)
+        # Choose A from S using policy derived from Q
+        a = choose_action(Q, s, available_actions, epsilon)
+        while not env.is_game_over():
+            #observe R and S'
+            prev_score = env.score()
+            env.step(a)
+            new_score = env.score()
+            reward = new_score - prev_score
+            s_prime = env.state_id()
+            # Choose A' from S' using policy derived from Q
+            available_actions_prime = env.available_actions()
+            Q = update_Q(Q, s_prime, available_actions_prime)
+            a_prime = choose_action(Q, s_prime, available_actions_prime, epsilon)
+            if not env.is_game_over():
+                q_s_prime = Q[s_prime][a_prime]
+                Q[s][a] = Q[s][a] + alpha * (reward + gamma * q_s_prime - Q[s][a])
+            else:
+                Q[s][a] = Q[s][a] + alpha * (reward)
+            s = s_prime
+            a = a_prime
+    return Q
 
-    # Fonction pour choisir une action en utilisant une politique epsilon-greedy
-    for episode in range(num_episodes):
-        state = start_state
-        action = choose_action(state, epsilon, Q, A)
+def update_Q(Q,s,aa):
+    if s not in Q:
+        Q[s] = {}
+        for a in aa:
+            Q[s][a] = np.random.random()
+    return Q
 
-        while state not in T:  # États terminaux
-            next_state = np.argmax(np.sum(P[state, action, :, :], axis=1))
-            reward_index = np.argmax(P[state, action, next_state, :])
-            reward = R[reward_index]
-            next_action = choose_action(next_state, epsilon, Q, A)
 
-            # Mise à jour de Q selon la formule Sarsa
-            Q[state, action] = Q[state, action] + alpha * (
-                    reward + gamma * Q[next_state, next_action] - Q[state, action]
-            )
 
-            state = next_state
-            action = next_action
 
-    # Mise à jour de la politique pour être gloutonne par rapport à Q
-    for state in range(len(S)):
-        best_action = np.argmax(Q[state])
-        policy[state] = np.zeros(len(A))
-        policy[state][best_action] = 1.0
-    #
-    # match game:
-    #     case "lineworld":
-    #         steps, total_reward = play_game_lineworld(policy, P, R, T)
-    #     case "gridworld":
-    #         steps, total_reward = play_game_gridworld(policy, P, R, T)
+if __name__ == '__main_random_game__':
+    env0 = secret_envs_wrapper.SecretEnv3()
+    while not env0.is_game_over():
+        env0.display()
+        a = random.choice(env0.available_actions())
+        print(env0.state_id())
+        env0.step(a)
+        print(env0.score())
 
-    # print(f"Steps: {steps}")
-    # print(f"Total Reward: {total_reward}")
+if __name__ == '__main__':
+    config_lineworld = load_config(congig_file, "LineWorld")
+    game = "lineworld"
+    S = config_lineworld["states"]
+    A = config_lineworld["actions"]
+    R = config_lineworld["rewards"]
+    T = config_lineworld["terminals"]
+    lineworld_env = lw.LineWorld(config_lineworld)
+    Q_optimal = sarsa(lineworld_env, 0.1, 0.1, 0.9,50000)
+    Pi = calcul_policy(Q_optimal)
+    lineworld_test = lw.LineWorld(config_lineworld)
+    play_a_game_by_Pi(lineworld_test, Pi)
 
-    return policy, Q
+if __name__ == '__main__env':
+    Q_optimal = sarsa(secret_envs_wrapper.SecretEnv0(), 0.1, 0.1, 0.9,5000)
+    Pi = calcul_policy(Q_optimal)
+    env = secret_envs_wrapper.SecretEnv0()
+    play_a_game_by_Pi(env,Pi)
