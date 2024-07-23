@@ -21,7 +21,10 @@ def calcul_policy(Q):
     return Pi
 
 def play_a_game_by_Pi(env,Pi):
+    random_move = 0
+    move = 0
     while not env.is_game_over():
+        move += 1
         env.display()
         print(env.score())
         if env.state_id() in Pi:
@@ -29,12 +32,15 @@ def play_a_game_by_Pi(env,Pi):
             if env.is_forbidden(a):
                 a = random.choice(env.available_actions())
                 env.step(a)
+                random_move+=1
             else:
                 env.step(a)
         else:
             a = random.choice(env.available_actions())
             env.step(a)
+            random_move += 1
     env.display()
     print(env.score())
+    print("a joué : ",random_move, "coup random sur ",move)
     with open('stratégie_optimal.pkl', 'wb') as fichier:
         pickle.dump(Pi, fichier)
