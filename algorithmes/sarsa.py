@@ -1,21 +1,11 @@
 from tqdm import tqdm
 import secret_envs_wrapper
 import environnements.lineworld as lw
-from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, update_Q, save_results_to_pickle
+from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, update_Q, observe_R_S_prime, save_results_to_pickle
 import environnements.gridworld as gw
 
 
 congig_file = "../config.yaml"
-
-
-def observe_R_S_prime(env, a):
-    prev_score = env.score()
-    env.step(a)
-    new_score = env.score()
-    reward = new_score - prev_score
-    s_prime = env.state_id()
-    available_actions_prime = env.available_actions()
-    return reward, s_prime, available_actions_prime
 
 
 def sarsa(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 500):
@@ -76,6 +66,6 @@ def play_game(game, parameters, results_path):
 
 if __name__ == '__main__':
     game = "GridWorld"
-    parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 5000}
+    parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 1000}
     results_path = f"results/{game}_sarsa.pkl"
     play_game(game, parameters, results_path)
