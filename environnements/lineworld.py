@@ -8,9 +8,8 @@ class LineWorld:
         self.rewards = config['rewards']
         self.terminals = config['terminals']
         self.transition_matrix = self.create_lineworld()
-        self.action_space = namedtuple('ActionSpace', ['n'])
-        self.action_space.n = len(self.actions)
-
+        self.scored = 0
+        self.state = 2
     def create_lineworld(self):
         p = np.zeros((len(self.states), len(self.actions), len(self.states), len(self.rewards)))
 
@@ -30,15 +29,48 @@ class LineWorld:
         self.state = 2  # Start state
         return self.state
 
-    def step(self, action):
-        next_state = np.argmax(np.sum(self.transition_matrix[self.state, action, :, :], axis=1))
-        reward_index = np.argmax(self.transition_matrix[self.state, action, next_state, :])
-        reward = self.rewards[reward_index]
-        done = next_state in self.terminals
-        self.state = next_state
-        return self.state, reward, done
+    def num_states(self) -> int:
+        return len(self.states)
 
-    def render(self):
+    def num_actions(self) -> int:
+        return len(self.actions)
+
+    def num_rewards(self) -> int:
+        return len(self.rewards)
+
+    def reward(self, i: int) -> float:
+        return self.rewards[i]
+
+    def p(self, s: int, a: int, s_p: int, r_index: int) -> float:
+        return self.transition_matrix[s, a, s_p, r_index]
+
+    # Monte Carlo and TD Methods related functions:
+    def state_id(self) -> int:
+        return self.state
+
+    def display(self):
         lineworld = ['_' for _ in range(5)]
         lineworld[self.state] = 'X'
         print("".join(lineworld))
+
+    def is_forbidden(self, action: int) -> int:
+        return not action in self.actions
+
+    def is_game_over(self) -> bool:
+        is_end = self.state in self.terminals
+        return is_end
+
+    def step(self, action: int):
+        if action == 1:
+            self.state += 1
+        if action == 0:
+            self.state -= 1
+    def score(self):
+        if self.state == 4:
+            self.scored = self.rewards[2]
+        if self.state == 0:
+            self.scored = self.rewards[0]
+        return self.scored
+
+    def available_actions(self):
+        return self.actions
