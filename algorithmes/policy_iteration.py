@@ -152,4 +152,3 @@ if __name__ == '__main__':
     montyhall2_config = config['MontyHall2']
     policy, V = policy_iteration(MontyHall2, montyhall2_config, "MontyHall2")
     print("Optimal Policy for MontyHall2:", policy)
-    print("Value Function for MontyHall2:", V)
