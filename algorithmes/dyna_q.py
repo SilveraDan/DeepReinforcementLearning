@@ -95,5 +95,5 @@ if __name__ == '__main__':
         "nb_iter": 1000,
         "n_planning": 10
     }
-    results_path = f"results/{game}_dyna_q.pkl"
+    results_path = f"../results/{game}_dyna_q.pkl"
     play_game(game, parameters, results_path)

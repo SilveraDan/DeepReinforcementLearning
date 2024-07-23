@@ -74,7 +74,7 @@ def play_game(game, parameters, results_path):
 if __name__ == '__main__':
     game = "GridWorld"
     parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 1000}
-    results_path = f"results/{game}_q_learning.pkl"
+    results_path = f"../results/{game}_q_learning.pkl"
     play_game(game, parameters, results_path)
 
 
