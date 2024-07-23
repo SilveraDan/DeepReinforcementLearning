@@ -67,8 +67,10 @@ def play_game(game, parameters, results_path):
     n_planning = parameters["n_planning"]
     match game:
         case "LineWorld":
+            config = load_config(congig_file, game)
             env = lw.LineWorld(config)
         case "GridWorld":
+            config = load_config(congig_file, game)
             env = gw.GridWorld(config)
         case "SecretEnv0":
             env = secret_envs_wrapper.SecretEnv0()
@@ -83,7 +85,7 @@ def play_game(game, parameters, results_path):
     Pi = calcul_policy(Q_optimal)
     env.reset()
     save_results_to_pickle(Q_optimal, Pi, results_path)
-    play_a_game_by_Pi(env, Pi)
+    #play_a_game_by_Pi(env, Pi)
 
 
 if __name__ == '__main__':
