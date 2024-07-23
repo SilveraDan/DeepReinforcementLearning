@@ -34,7 +34,7 @@ def calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha):
     return Q[s, a]
 
 
-def dyna_q(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 100000, n_planning = 10):
+def dyna_q(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 100000, n_planning=10):
     Q = np.zeros((env.num_states(), env.num_actions()))
     Q = init_Q(env, Q)
     model = {}
@@ -87,12 +87,12 @@ def play_game(game, parameters, results_path):
 
 
 if __name__ == '__main__':
-    game = "GridWorld"
+    game = "SecretEnv0"
     parameters = {
         "alpha": 0.1,
         "epsilon": 0.1,
         "gamma": 0.999,
-        "nb_iter": 100,
+        "nb_iter": 1000,
         "n_planning": 10
     }
     results_path = f"results/{game}_dyna_q.pkl"
