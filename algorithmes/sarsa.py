@@ -5,7 +5,7 @@ from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, 
 import environnements.gridworld as gw
 
 
-congig_file = "../config.yaml"
+congig_file = "./config.yaml"
 
 
 def sarsa(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 500):
@@ -45,8 +45,10 @@ def play_game(game, parameters, results_path):
     nb_iter = parameters["nb_iter"]
     match game:
         case "LineWorld":
+            config = load_config(congig_file, game)
             env = lw.LineWorld(config)
         case "GridWorld":
+            config = load_config(congig_file, game)
             env = gw.GridWorld(config)
         case "SecretEnv0":
             env = secret_envs_wrapper.SecretEnv0()
@@ -61,11 +63,11 @@ def play_game(game, parameters, results_path):
     Pi = calcul_policy(Q_optimal)
     env.reset()
     save_results_to_pickle(Q_optimal, Pi, results_path)
-    play_a_game_by_Pi(env, Pi)
+    #play_a_game_by_Pi(env, Pi)
 
 
-if __name__ == '__main__':
-    game = "GridWorld"
-    parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 1000}
-    results_path = f"../results/{game}_sarsa.pkl"
-    play_game(game, parameters, results_path)
+# if __name__ == '__main__':
+#     game = "GridWorld"
+#     parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 1000}
+#     results_path = f"../results/{game}_sarsa.pkl"
+#     play_game(game, parameters, results_path)

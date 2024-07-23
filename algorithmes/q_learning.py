@@ -6,7 +6,7 @@ import environnements.gridworld2 as gw
 from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, update_Q, observe_R_S_prime, save_results_to_pickle
 
 
-congig_file = "../config.yaml"
+congig_file = "./config.yaml"
 
 
 def calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha, env):
@@ -44,16 +44,16 @@ def q_learning(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.9
 
 
 def play_game(game, parameters, results_path):
-    if "SecretEnv" not in game:
-        config = load_config(congig_file, game)
     alpha = parameters["alpha"]
     epsilon = parameters["epsilon"]
     gamma = parameters["gamma"]
     nb_iter = parameters["nb_iter"]
     match game:
         case "LineWorld":
+            config = load_config(congig_file, game)
             env = lw.LineWorld(config)
         case "GridWorld":
+            config = load_config(congig_file, game)
             env = gw.GridWorld(config)
         case "SecretEnv0":
             env = secret_envs_wrapper.SecretEnv0()
@@ -68,7 +68,7 @@ def play_game(game, parameters, results_path):
     Pi = calcul_policy(Q_optimal)
     env.reset()
     save_results_to_pickle(Q_optimal, Pi, results_path)
-    play_a_game_by_Pi(env, Pi)
+    #play_a_game_by_Pi(env, Pi)
 
 
 if __name__ == '__main__':
