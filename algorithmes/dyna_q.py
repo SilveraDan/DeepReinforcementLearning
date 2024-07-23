@@ -1,48 +1,99 @@
 import numpy as np
+from tqdm import tqdm
 import random
+import secret_envs_wrapper
+import environnements.lineworld as lw
+import environnements.gridworld2 as gw
+from utils import load_config, calcul_policy, play_a_game_by_Pi, observe_R_S_prime, save_results_to_pickle
 
 
-def choose_action(state, epsilon, Q, A):
+congig_file = "../config.yaml"
+
+
+def choose_action(Q, s, available_actions, epsilon):
     if random.uniform(0, 1) < epsilon:
-        return random.choice(A) - 1
+        a = random.choice(available_actions)
     else:
-        return np.argmax(Q[state])
+        q_s = [Q[s, a] for a in available_actions]
+        best_a_index = np.argmax(q_s)
+        a = available_actions[best_a_index]
+    return a
 
 
-def dyna_q(S, A, R, P, T, n_episodes, n_planning_steps, alpha, gamma, epsilon, start_state):
-    q_table = np.zeros((len(S), len(A)))
-    policy = np.ones((len(S), len(A))) / len(A)
+def init_Q(env, Q):
+    for s in range(env.num_states()):
+        for a in range(env.num_actions()):
+            Q[s, a] = np.random.random()
+    return Q
+
+
+def calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha):
+    q_s_prime = [Q[s_prime, a_p] for a_p in available_actions_prime]
+    best_move = np.max(q_s_prime)
+    Q[s, a] = Q[s, a] + alpha * (reward + gamma * best_move - Q[s, a])
+    return Q[s, a]
+
+
+def dyna_q(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 100000, n_planning = 10):
+    Q = np.zeros((env.num_states(), env.num_actions()))
+    Q = init_Q(env, Q)
     model = {}
+    for _ in tqdm(range(nb_iter)):
+        env.reset()
+        while not env.is_game_over():
+            s = env.state_id()
+            available_actions = env.available_actions()
+            # Choose A from S using policy derived from Q
+            a = choose_action(Q, s, available_actions, epsilon)
+            # Take action A, observe R, S'
+            reward, s_prime, available_actions_prime = observe_R_S_prime(env, a)
+            Q[s, a] = calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha)
+            model[(s, a)] = (reward, s_prime)
+            for _ in range(n_planning):
+                s, a = random.choice(list(model.keys()))
+                reward, s_prime = model[(s, a)]
+                available_actions_prime = env.available_actions()
+                Q[s, a] = calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha)
+    return Q
 
-    for episode in range(n_episodes):
-        state = start_state
 
-        while state not in T:
-            action = choose_action(state, epsilon, q_table, A)
+def play_game(game, parameters, results_path):
+    if "SecretEnv" not in game:
+        config = load_config(congig_file, game)
+    alpha = parameters["alpha"]
+    epsilon = parameters["epsilon"]
+    gamma = parameters["gamma"]
+    nb_iter = parameters["nb_iter"]
+    n_planning = parameters["n_planning"]
+    match game:
+        case "LineWorld":
+            env = lw.LineWorld(config)
+        case "GridWorld":
+            env = gw.GridWorld(config)
+        case "SecretEnv0":
+            env = secret_envs_wrapper.SecretEnv0()
+        case "SecretEnv1":
+            env = secret_envs_wrapper.SecretEnv1()
+        case "SecretEnv2":
+            env = secret_envs_wrapper.SecretEnv2()
+        case _:
+            print("Game not found")
+            return 0
+    Q_optimal = dyna_q(env, alpha, epsilon, gamma, nb_iter, n_planning)
+    Pi = calcul_policy(Q_optimal)
+    env.reset()
+    save_results_to_pickle(Q_optimal, Pi, results_path)
+    play_a_game_by_Pi(env, Pi)
 
-            # Obtenir la récompense et le nouvel état
-            next_state = np.argmax(np.sum(P[state, action, :, :], axis=1))
-            reward_index = np.argmax(P[state, action, next_state, :])
-            reward = R[reward_index]
 
-            # Mise à jour de la Q-table
-            q_table[state, action] += alpha * (reward + gamma * np.max(q_table[next_state]) - q_table[state, action])
-
-            # Mise à jour du modèle
-            model[(state, action)] = (reward, next_state)
-
-            state = next_state
-
-            # Planification (n_planning_steps mises à jour avec le modèle)
-            for _ in range(n_planning_steps):
-                if model:
-                    s, a = random.choice(list(model.keys()))
-                    r, s_prime = model[(s, a)]
-                    q_table[s, a] += alpha * (r + gamma * np.max(q_table[s_prime]) - q_table[s, a])
-
-    for state in range(len(S)):
-        best_action = np.argmax(q_table[state])
-        policy[state] = np.zeros(len(A))
-        policy[state][best_action] = 1.0
-
-    return policy, q_table
+if __name__ == '__main__':
+    game = "GridWorld"
+    parameters = {
+        "alpha": 0.1,
+        "epsilon": 0.1,
+        "gamma": 0.999,
+        "nb_iter": 100,
+        "n_planning": 10
+    }
+    results_path = f"results/{game}_dyna_q.pkl"
+    play_game(game, parameters, results_path)

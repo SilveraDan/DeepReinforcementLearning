@@ -122,3 +122,13 @@ def save_results_to_pickle(Q, Pi, file_path):
     # Sauvegarde les données dans le fichier
     with open(file_path, 'wb') as file:
         pickle.dump(data_to_save, file)
+
+
+def observe_R_S_prime(env, a):
+    prev_score = env.score()
+    env.step(a)
+    new_score = env.score()
+    reward = new_score - prev_score
+    s_prime = env.state_id()
+    available_actions_prime = env.available_actions()
+    return reward, s_prime, available_actions_prime
