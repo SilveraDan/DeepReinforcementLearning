@@ -16,13 +16,13 @@ TwoRoundRPS:
   states: ['initial', 'first_round_rock', 'first_round_paper', 'first_round_scissors', 'terminal']
   actions: [0, 1, 2] # Rock, Paper, Scissors
   rewards: [-1, 0, 1] # Lose, Draw, Win
-  terminals: ['terminal'] # After two rounds
+  terminals: [1] # After two rounds
 
 MontyHall1:
-  states: ['A', 'B', 'C']
+  states: [0, 1, 2]
   actions: [0, 1] # 0: Stay, 1: Switch
   rewards: [0, 1] # Lose, Win
-  terminals: ['terminal']
+  terminals: [1]
   
 MontyHall2:
   states: ['A', 'B', 'C', 'D', 'E']

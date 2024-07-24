@@ -3,10 +3,11 @@ from tqdm import tqdm
 import secret_envs_wrapper
 import environnements.lineworld as lw
 import environnements.gridworld2 as gw
+import environnements.montyhall1 as mh1
 from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, update_Q, observe_R_S_prime, save_results_to_pickle
 
 
-congig_file = "./config.yaml"
+congig_file = "../config.yaml"
 
 
 def calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha, env):
@@ -55,6 +56,9 @@ def play_game(game, parameters, results_path):
         case "GridWorld":
             config = load_config(congig_file, game)
             env = gw.GridWorld(config)
+        case "MontyHall1":
+            config = load_config(congig_file, game)
+            env = mh1.MontyHall1(config)
         case "SecretEnv0":
             env = secret_envs_wrapper.SecretEnv0()
         case "SecretEnv1":
@@ -66,14 +70,21 @@ def play_game(game, parameters, results_path):
             return 0
     Q_optimal = q_learning(env, alpha, epsilon, gamma, nb_iter)
     Pi = calcul_policy(Q_optimal)
+    print('Policy calculated')
     env.reset()
-    save_results_to_pickle(Q_optimal, Pi, results_path)
+    play_a_game_by_Pi(env, Pi)
+    if game == 'MontyHall1':
+        print(f"Action = {env.action_choose}")
+
+    scored = env.score()
+    #save_results_to_pickle(Q_optimal, Pi, scored, results_path)
+    #print('Results saved')
     #play_a_game_by_Pi(env, Pi)
 
 
 if __name__ == '__main__':
-    game = "GridWorld"
-    parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 1000}
+    game = "MontyHall1"
+    parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 10000}
     results_path = f"../results/{game}_q_learning.pkl"
     play_game(game, parameters, results_path)
 

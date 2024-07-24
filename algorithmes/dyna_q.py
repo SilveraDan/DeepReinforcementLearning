@@ -84,8 +84,10 @@ def play_game(game, parameters, results_path):
     Q_optimal = dyna_q(env, alpha, epsilon, gamma, nb_iter, n_planning)
     Pi = calcul_policy(Q_optimal)
     env.reset()
-    save_results_to_pickle(Q_optimal, Pi, results_path)
-    #play_a_game_by_Pi(env, Pi)
+    play_a_game_by_Pi(env, Pi)
+    scored = env.score()
+    save_results_to_pickle(Q_optimal, Pi, scored, results_path)
+
 
 
 if __name__ == '__main__':
