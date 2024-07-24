@@ -6,12 +6,13 @@ import random
 import secret_envs_wrapper
 import pickle
 import environnements.lineworld2 as lw
-from utils import load_config, calcul_policy, play_a_game_by_Pi
+import environnements.gridworld2 as gw
+from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, update_Q, observe_R_S_prime, save_results_to_pickle
 
 congig_file = "../config.yaml"
 
 
-def value_interation(env, theta, gamma, date_dict):
+def value_interation(env, theta, gamma,data_dict):
     delta = 0
     V = np.random.rand(env.num_states())
 
@@ -22,7 +23,7 @@ def value_interation(env, theta, gamma, date_dict):
             filtered_dico = {k: v for k, v in data_dict.items() if v[0] == s}
             if not filtered_dico: continue
             sums = []
-            for key, value in filtered_dico.items():
+            for value in filtered_dico.values():
                 s, a, s_prime, reward, p = value
                 sum_expected_value = p * (reward + gamma * V[s_prime])
                 sums.append(sum_expected_value)
@@ -32,7 +33,7 @@ def value_interation(env, theta, gamma, date_dict):
                 delta = np.abs(v - V[s])
         if delta < theta:
             break
-    Pi = compute_policy(V,date_dict,gamma,V)
+    Pi = compute_policy(V,data_dict,gamma,V)
     return Pi
 
 def compute_policy(s,data_dict,gamma,V):
@@ -68,50 +69,46 @@ def extract_data(env):
                     i += 1
     return dict
 
+def play_game(game, parameters, results_path):
+    theta = parameters["theta"]
+    gamma = parameters["gamma"]
+    data_dict = {}
 
-if __name__ == '__main4__':
-    config_lineworld = load_config(congig_file, "LineWorld")
-    lineworld_env = lw.LineWorld(config_lineworld)
-    Pi = value_interation(lineworld_env, 1e-3, 0.95)
-    lineworld_test = lw.LineWorld(config_lineworld)
-    play_a_game_by_Pi(lineworld_test, Pi)
-
-if __name__ == '__main__':
-    with open('mon_dictionnaire.pkl', 'rb') as fichier:
-        data_dict = pickle.load(fichier)
-    Pi = value_interation(secret_envs_wrapper.SecretEnv0(), 0.001, 0.95, data_dict)
-    env = secret_envs_wrapper.SecretEnv0()
+    match game:
+        case "LineWorld":
+            config = load_config(congig_file, game)
+            env = lw.LineWorld(config)
+        case "GridWorld":
+            config = load_config(congig_file, game)
+            env = gw.GridWorld(config)
+        case "SecretEnv0":
+            env = secret_envs_wrapper.SecretEnv0()
+        case "SecretEnv1":
+            env = secret_envs_wrapper.SecretEnv1()
+        case "SecretEnv2":
+            env = secret_envs_wrapper.SecretEnv2()
+        case _:
+            print("Game not found")
+            return 0
+    if not os.path.exists(game + '.pkl'):
+        data_dict = (extract_data(env))
+        with open(game + '.pkl', 'wb') as fichier:
+            pickle.dump(data_dict, fichier)
+    else:
+        with open(game + '.pkl', 'rb') as fichier:
+            data_dict = pickle.load(fichier)
+    Pi = value_interation(env, theta, gamma, data_dict)
+    Q = {}
+    env.reset()
+    save_results_to_pickle(Q, Pi, results_path)
     play_a_game_by_Pi(env, Pi)
 
-if __name__ == '__main4__':
-    mon_dictionnaire = (extract_data(secret_envs_wrapper.SecretEnv0()))
+if __name__ == '__main__':
+    game = "GridWorld"
+    parameters = {"theta": 0.01, "gamma": 0.999}
+    results_path = f"results/{game}_value_iteration.pkl"
+    play_game(game, parameters, results_path)
 
-    # Sauvegarde du dictionnaire dans un fichier
-    with open('mon_dictionnaire.pkl', 'wb') as fichier:
-        pickle.dump(mon_dictionnaire, fichier)
-    # Chargement du dictionnaire depuis le fichier
-    with open('mon_dictionnaire.pkl', 'rb') as fichier:
-        mon_dictionnaire_chargé = pickle.load(fichier)
 
-    print(mon_dictionnaire_chargé)
 
-if __name__ == '__main4__':
-    with open('mon_dictionnaire.pkl', 'rb') as fichier:
-        data_dict = pickle.load(fichier)
-    actions = np.zeros(len(data_dict))
-    for key, value in data_dict.items():
-        s, a, s_prime, reward, p = value
-        num1 = a
-        if isinstance(num1, int):
-            print(f"{num1} est un int")
-        elif isinstance(num1, float):
-            print(f"{num1} est un float")
-        actions = np.append(actions, int(a))
-    for i in range(len(actions)):
-        best_action = actions[i]
-        print(best_action)
-        num1 = best_action
-        if isinstance(num1, int):
-            print(f"{num1} est un int")
-        elif isinstance(num1, float):
-            print(f"{num1} est un float")
+
