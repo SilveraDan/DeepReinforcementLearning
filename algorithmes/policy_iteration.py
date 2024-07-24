@@ -51,10 +51,13 @@ def play_game(env, policy, P, R, T, state_space):
     steps = 0
     visited_states = []
     while True:
-        env.render()
         state_idx = state_space.index(state) if state in state_space else len(state_space) - 1
         action = np.argmax(policy[state_idx])
-        next_state, reward, done = env.step(action)
+        result = env.step(action)
+        if len(result) == 3:
+            next_state, reward, done = result
+        else:
+            next_state, reward, done, _ = result
         print(f"State: {state}, Action: {action}, Reward: {reward}, Next State: {next_state}")
         state = next_state
         total_reward += reward
@@ -80,7 +83,11 @@ def create_transition_matrix(env, state_space, action_space):
         for a in range(num_actions):
             env.reset()
             env.state = state_space[s]
-            next_state, reward, done = env.step(a)
+            result = env.step(a)
+            if len(result) == 3:
+                next_state, reward, done = result
+            else:
+                next_state, reward, done, _ = result
             next_state_idx = state_space.index(next_state) if next_state in state_space else num_states
             reward_idx = env.rewards.index(reward)
             P[s, a, next_state_idx, reward_idx] = 1.0
@@ -115,7 +122,7 @@ def policy_iteration(env_class, config, game_name):
         steps, total_reward = play_game(env, new_policy, P, R, T, S)
         print(f"Steps: {steps}")
         print(f"Total Reward: {total_reward}")
-        if policy_stable or iteration >= 1:
+        if policy_stable or iteration >= 1000:
             break
         policy = new_policy
     return policy, V

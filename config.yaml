@@ -13,7 +13,7 @@ GridWorld:
   terminals: [0, 1, 2, 3, 4, 5, 9, 10, 14, 15, 18, 19, 20, 21, 22, 23, 24] # lost, win
 
 TwoRoundRPS:
-  states: ['initial', 'first_round_rock', 'first_round_paper', 'first_round_scissors']
+  states: ['initial', 'first_round_rock', 'first_round_paper', 'first_round_scissors', 'terminal']
   actions: [0, 1, 2] # Rock, Paper, Scissors
   rewards: [-1, 0, 1] # Lose, Draw, Win
   terminals: ['terminal'] # After two rounds
