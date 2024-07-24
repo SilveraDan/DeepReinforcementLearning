@@ -7,16 +7,14 @@ class MontyHall2:
         self.actions = config['actions']
         self.rewards = config['rewards']
         self.terminals = config['terminals']
-        self.transition_matrix = self.create_montyhall2()
         self.scored = 0
-        self.state = None
+        self.doors = [0, 0, 0, 0, 1]
+        np.random.shuffle(self.doors)
+        self.available_doors = [0, 1, 2, 3, 4]
 
-        # Ajout des attributs action_space et state_space
-        self.action_space = namedtuple('ActionSpace', ['n'])
-        self.state_space = namedtuple('StateSpace', ['n'])
-        self.action_space.n = len(self.actions)
-        self.state_space.n = len(self.states)
-        self.reset()
+        self.state = np.random.choice(self.states)
+        self.nb_steps = 0
+        self.action_choose = None
     
     def create_montyhall2(self):
         num_states = len(self.states)
@@ -27,7 +25,7 @@ class MontyHall2:
                 self.doors = ['goat'] * 4 + ['car']
                 np.random.shuffle(self.doors)
                 selected_door = self.states[s]
-                revealed_doors = self.reveal_doors(selected_door)
+                revealed_doors = self.reveal_door()
                 if a == 1:  # Switch
                     remaining_doors = [door for door in self.states if door != selected_door and door not in revealed_doors]
                     next_state = np.random.choice(remaining_doors)
@@ -40,16 +38,20 @@ class MontyHall2:
                 p[s, a, next_state_idx, reward_idx] = 1.0
 
         return p
-    
-    def reveal_doors(self, selected_door):
-        available_doors = [door for door in self.states if door != selected_door and self.doors[self.states.index(door)] == 'goat']
-        return np.random.choice(available_doors, 3, replace=False)
+
+    def reveal_door(self):
+        available_doors_to_choose = [i for i in self.available_doors if i != self.state and self.doors[i] == 0]
+        door_to_reveal = np.random.choice(available_doors_to_choose)
+        self.available_doors.remove(door_to_reveal)
     
     def reset(self):
-        self.doors = ['goat'] * 4 + ['car']
+        self.doors = [0, 0, 0, 0, 1]
+        self.available_doors = [0, 1, 2, 3, 4]
         np.random.shuffle(self.doors)
         self.state = np.random.choice(self.states)
-        return self.state
+        self.nb_steps = 0
+        self.action_choose = None
+        self.scored = 0
 
     def num_states(self) -> int:
         return len(self.states)
@@ -67,37 +69,44 @@ class MontyHall2:
         return self.transition_matrix[s, a, s_p, r_index]
 
     def state_id(self) -> int:
-        return self.states.index(self.state)
+        return self.state
 
-    def display(self):
-        print(f"Current State: {self.state}, Doors: {self.doors}")
 
     def is_forbidden(self, action: int) -> int:
         return not action in self.actions
 
     def is_game_over(self) -> bool:
-        return self.state in self.terminals
+        return self.nb_steps in self.terminals
 
     def step(self, action: int):
-        if self.is_game_over():
-            return self.state, 0, True, {}
-
-        revealed_doors = self.reveal_doors(self.state)
+        for i in range(len(self.doors) - 2):
+            self.reveal_door()
         if action == 1:  # Switch
-            remaining_doors = [door for door in self.states if door != self.state and door not in revealed_doors]
-            next_state = np.random.choice(remaining_doors)
-        else:  # Stay
-            next_state = self.state
+            available_doors_to_choose = [door for door in self.available_doors if door != self.state]
+            self.state = np.random.choice(available_doors_to_choose)
 
-        reward = self.rewards[1] if self.doors[self.states.index(next_state)] == 'car' else self.rewards[0]
-        self.state = next_state
-        done = self.state in self.terminals
-        return self.state, reward, done, {}
+        self.nb_steps += 1
+        self.action_choose = action
+        self.scored = self.score()
 
     def score(self):
-        if self.state in self.terminals:
-            return self.scored
-        return 0
+        if self.nb_steps in self.terminals:
+            if self.doors[self.state] == 1:
+                return self.rewards[1]
+            else:
+                return self.rewards[0]
+        else:
+            return 0
+
+
+    def display(self):
+        if self.nb_steps == 0:
+            doors_display = ['X' if i != self.state else 'O' for i in range(len(self.doors))]
+            print(f"Doors: {doors_display}")
+        elif self.nb_steps in self.terminals:
+            result_str = "Won" if self.doors[self.state] == 1 else "Lost"
+            print(f"Result: {result_str}")
+
 
     def available_actions(self):
         return self.actions

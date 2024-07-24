@@ -1,11 +1,13 @@
 from tqdm import tqdm
 import secret_envs_wrapper
 import environnements.lineworld as lw
-from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, update_Q, observe_R_S_prime, save_results_to_pickle
-import environnements.gridworld as gw
+import environnements.gridworld2 as gw
+import environnements.montyhall1 as mh1
+import environnements.montyhall2 as mh2
+import utils as ut
 
 
-congig_file = "./config.yaml"
+congig_file = "../config.yaml"
 
 
 def sarsa(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 500):
@@ -16,15 +18,15 @@ def sarsa(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, n
         env.reset()
         s = env.state_id()
         available_actions = env.available_actions()
-        Q = update_Q(Q, s, available_actions, env)
+        Q = ut.update_Q(Q, s, available_actions, env)
         # Choose A from S using policy derived from Q
-        a = choose_action(Q, s, available_actions, epsilon)
+        a = ut.choose_action(Q, s, available_actions, epsilon)
         while not env.is_game_over():
             # Take action A, observe R, S'
-            reward, s_prime, available_actions_prime = observe_R_S_prime(env, a)
-            Q = update_Q(Q, s_prime, available_actions_prime, env)
+            reward, s_prime, available_actions_prime = ut.observe_R_S_prime(env, a)
+            Q = ut.update_Q(Q, s_prime, available_actions_prime, env)
             # Choose A' from S' using policy derived from Q
-            a_prime = choose_action(Q, s_prime, available_actions_prime, epsilon)
+            a_prime = ut.choose_action(Q, s_prime, available_actions_prime, epsilon)
             # Q(s,a) <- Q(s,a) + alpha * [R + gamma * Q(s',a') - Q(s,a)]
             if not env.is_game_over():
                 q_s_prime = Q[s_prime][a_prime]
@@ -38,18 +40,24 @@ def sarsa(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, n
 
 def play_game(game, parameters, results_path):
     if "SecretEnv" not in game:
-        config = load_config(congig_file, game)
+        config = ut.load_config(congig_file, game)
     alpha = parameters["alpha"]
     epsilon = parameters["epsilon"]
     gamma = parameters["gamma"]
     nb_iter = parameters["nb_iter"]
     match game:
         case "LineWorld":
-            config = load_config(congig_file, game)
+            config = ut.load_config(congig_file, game)
             env = lw.LineWorld(config)
         case "GridWorld":
-            config = load_config(congig_file, game)
+            config = ut.load_config(congig_file, game)
             env = gw.GridWorld(config)
+        case "MontyHall1":
+            config = ut.load_config(congig_file, game)
+            env = mh1.MontyHall1(config)
+        case "MontyHall2":
+            config = ut.load_config(congig_file, game)
+            env = mh2.MontyHall2(config)
         case "SecretEnv0":
             env = secret_envs_wrapper.SecretEnv0()
         case "SecretEnv1":
@@ -60,16 +68,18 @@ def play_game(game, parameters, results_path):
             print("Game not found")
             return 0
     Q_optimal = sarsa(env, alpha, epsilon, gamma, nb_iter)
-    Pi = calcul_policy(Q_optimal)
-    env.reset()
-    play_a_game_by_Pi(env, Pi)
-    scored = env.score()
-    save_results_to_pickle(Q_optimal, Pi, scored, results_path)
-    #play_a_game_by_Pi(env, Pi)
+    Pi = ut.calcul_policy(Q_optimal)
+    if game == "MontyHall1":
+        ut.play_montyhall1(env, Pi)
+    if game == "MontyHall2":
+        ut.play_montyhall2(env, Pi)
+    else:
+        env.reset()
+        ut.play_a_game_by_Pi(env, Pi)
 
 
-# if __name__ == '__main__':
-#     game = "GridWorld"
-#     parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 1000}
-#     results_path = f"../results/{game}_sarsa.pkl"
-#     play_game(game, parameters, results_path)
+if __name__ == '__main__':
+    game = "MontyHall2"
+    parameters = {"alpha": 0.1, "epsilon": 0.1, "gamma": 0.999, "nb_iter": 10000}
+    results_path = f"../results/{game}_sarsa.pkl"
+    play_game(game, parameters, results_path)

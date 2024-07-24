@@ -10,6 +10,9 @@ class LineWorld:
         self.transition_matrix = self.create_lineworld()
         self.scored = 0
         self.state = 2
+        self.action_space = namedtuple('ActionSpace', ['n'])
+        self.action_space.n = len(self.actions)
+
     def create_lineworld(self):
         p = np.zeros((len(self.states), len(self.actions), len(self.states), len(self.rewards)))
 

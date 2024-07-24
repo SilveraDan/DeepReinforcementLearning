@@ -40,12 +40,13 @@ def calcul_policy(Q):
         return Pi
 
 
-def play_a_game_by_Pi(env, Pi):
+def play_a_game_by_Pi(env, Pi, display_game=True):
     random_move = 0
     move = 0
     while not env.is_game_over():
         move += 1
-        #env.display()
+        if display_game:
+            env.display()
         #print(env.score())
         if env.state_id() in Pi:
             a = Pi[env.state_id()]
@@ -59,9 +60,10 @@ def play_a_game_by_Pi(env, Pi):
             a = random.choice(env.available_actions())
             env.step(a)
             random_move += 1
-    #env.display()
-    print(env.score())
-    print("a joué : ", random_move, "coup random sur ",move)
+    if display_game:
+        env.display()
+    #print(env.score())
+    #print("a joué : ", random_move, "coup random sur ",move)
     with open('stratégie_optimal.pkl', 'wb') as fichier:
         pickle.dump(Pi, fichier)
 
@@ -132,3 +134,26 @@ def observe_R_S_prime(env, a):
     s_prime = env.state_id()
     available_actions_prime = env.available_actions()
     return reward, s_prime, available_actions_prime
+
+
+def play_montyhall1(env, Pi):
+    print(f"Action from optimal policy for MontyHall1: {env.action_choose}")
+    avg_score = 0
+    for i in range(1000):
+        env.reset()
+        play_a_game_by_Pi(env, Pi, display_game=False)
+        if env.scored == 1:
+            avg_score += env.scored
+    avg_score /= 1000
+    print(f"Average score for MontyHall1: {avg_score}")
+
+
+def play_montyhall2(env, Pi):
+    avg_score = 0
+    for i in range(1000):
+        env.reset()
+        play_a_game_by_Pi(env, Pi, display_game=False)
+        if env.scored == 1:
+            avg_score += env.scored
+    avg_score /= 1000
+    print(f"Average score for MontyHall2: {avg_score}")

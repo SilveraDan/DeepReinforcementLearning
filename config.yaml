@@ -21,11 +21,11 @@ TwoRoundRPS:
 MontyHall1:
   states: [0, 1, 2]
   actions: [0, 1] # 0: Stay, 1: Switch
-  rewards: [0, 1] # Lose, Win
+  rewards: [-1, 1] # Lose, Win
   terminals: [1]
   
 MontyHall2:
-  states: ['A', 'B', 'C', 'D', 'E']
+  states: [0, 1, 2, 3, 4]
   actions: [0, 1] # 0: Stay, 1: Switch
-  rewards: [0, 1] # Lose, Win
-  terminals: ['terminal']
+  rewards: [-1, 1] # Lose, Win
+  terminals: [1]

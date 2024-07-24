@@ -12,11 +12,11 @@ from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, 
 congig_file = "../config.yaml"
 
 
-def value_interation(env, theta, gamma,data_dict):
+def value_interation(env, theta, gamma, data_dict):
     delta = 0
     V = np.random.rand(env.num_states())
 
-    for i in range(1000):
+    while True:
         delta = 0
         for s in range(env.num_states()):
             v = V[s]
@@ -92,20 +92,23 @@ def play_game(game, parameters, results_path):
             return 0
     if not os.path.exists(game + '.pkl'):
         data_dict = (extract_data(env))
+        print('Created data_dict')
         with open(game + '.pkl', 'wb') as fichier:
             pickle.dump(data_dict, fichier)
     else:
+        print('Loading data_dict')
         with open(game + '.pkl', 'rb') as fichier:
             data_dict = pickle.load(fichier)
     Pi = value_interation(env, theta, gamma, data_dict)
     Q = {}
     env.reset()
-    save_results_to_pickle(Q, Pi, results_path)
+    score = env.score()
+    save_results_to_pickle(Q, Pi, score, results_path)
     play_a_game_by_Pi(env, Pi)
 
 if __name__ == '__main__':
-    game = "GridWorld"
-    parameters = {"theta": 0.01, "gamma": 0.999}
+    game = "SecretEnv1"
+    parameters = {"theta": 0.00001, "gamma": 0.999}
     results_path = f"results/{game}_value_iteration.pkl"
     play_game(game, parameters, results_path)
 

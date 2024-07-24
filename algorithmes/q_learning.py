@@ -4,19 +4,17 @@ import secret_envs_wrapper
 import environnements.lineworld as lw
 import environnements.gridworld2 as gw
 import environnements.montyhall1 as mh1
-from utils import load_config, calcul_policy, play_a_game_by_Pi, choose_action, update_Q, observe_R_S_prime, save_results_to_pickle
+import environnements.montyhall2 as mh2
+import utils as ut
 
 
 congig_file = "../config.yaml"
 
 
 def calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha, env):
-    if not env.is_game_over():
-        q_s_prime = [Q[s_prime][a_p] for a_p in available_actions_prime]
-        best_move = np.max(q_s_prime)  # Directement obtenir la meilleure récompense après le mouvement
-        Q[s][a] += alpha * (reward + gamma * best_move - Q[s][a])
-    else:
-        Q[s][a] += alpha * reward
+    q_s_prime = [Q[s_prime][a_p] for a_p in available_actions_prime]
+    best_move = np.max(q_s_prime)  # Directement obtenir la meilleure récompense après le mouvement
+    Q[s][a] += alpha * (reward + gamma * best_move - Q[s][a])
     return Q[s][a]
 
 
@@ -30,12 +28,12 @@ def q_learning(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.9
         while not env.is_game_over():
             s = env.state_id()
             available_actions = env.available_actions()
-            Q = update_Q(Q, s, available_actions, env)
+            Q = ut.update_Q(Q, s, available_actions, env)
             # Choose A from S using policy derived from Q
-            a = choose_action(Q, s, available_actions, epsilon)
+            a = ut.choose_action(Q, s, available_actions, epsilon)
             # Take action A, observe R, S'
-            reward, s_prime, available_actions_prime = observe_R_S_prime(env, a)
-            Q = update_Q(Q, s_prime, available_actions_prime, env)
+            reward, s_prime, available_actions_prime = ut.observe_R_S_prime(env, a)
+            Q = ut.update_Q(Q, s_prime, available_actions_prime, env)
             if not env.is_game_over():
                 # Calcul Q(s,a)
                 Q[s][a] = calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha, env)
@@ -51,14 +49,17 @@ def play_game(game, parameters, results_path):
     nb_iter = parameters["nb_iter"]
     match game:
         case "LineWorld":
-            config = load_config(congig_file, game)
+            config = ut.load_config(congig_file, game)
             env = lw.LineWorld(config)
         case "GridWorld":
-            config = load_config(congig_file, game)
+            config = ut.load_config(congig_file, game)
             env = gw.GridWorld(config)
         case "MontyHall1":
-            config = load_config(congig_file, game)
+            config = ut.load_config(congig_file, game)
             env = mh1.MontyHall1(config)
+        case "MontyHall2":
+            config = ut.load_config(congig_file, game)
+            env = mh2.MontyHall2(config)
         case "SecretEnv0":
             env = secret_envs_wrapper.SecretEnv0()
         case "SecretEnv1":
@@ -69,17 +70,14 @@ def play_game(game, parameters, results_path):
             print("Game not found")
             return 0
     Q_optimal = q_learning(env, alpha, epsilon, gamma, nb_iter)
-    Pi = calcul_policy(Q_optimal)
-    print('Policy calculated')
-    env.reset()
-    play_a_game_by_Pi(env, Pi)
-    if game == 'MontyHall1':
-        print(f"Action = {env.action_choose}")
-
-    scored = env.score()
-    #save_results_to_pickle(Q_optimal, Pi, scored, results_path)
-    #print('Results saved')
-    #play_a_game_by_Pi(env, Pi)
+    Pi = ut.calcul_policy(Q_optimal)
+    if game == "MontyHall1":
+        ut.play_montyhall1(env, Pi)
+    if game == "MontyHall2":
+        ut.play_montyhall2(env, Pi)
+    else:
+        env.reset()
+        ut.play_a_game_by_Pi(env, Pi)
 
 
 if __name__ == '__main__':

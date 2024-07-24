@@ -12,8 +12,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from environnements.rps import TwoRoundRPS
 from environnements.montyhall1 import MontyHall1
 from environnements.montyhall2 import MontyHall2
-from environnements.lineworld import LineWorld
-from environnements.gridworld import GridWorld
+from environnements.lineworld2 import LineWorld
+from environnements.gridworld2 import GridWorld
 
 def load_config(config_path):
     with open(config_path, 'r') as f:
