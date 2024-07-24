@@ -2,9 +2,11 @@ import numpy as np
 from tqdm import tqdm
 import random
 import secret_envs_wrapper
-import environnements.lineworld as lw
+import environnements.lineworld2 as lw
 import environnements.gridworld2 as gw
-from utils import load_config, calcul_policy, play_a_game_by_Pi, observe_R_S_prime, save_results_to_pickle
+import environnements.montyhall1 as mh1
+import environnements.montyhall2 as mh2
+import utils as ut
 
 
 congig_file = "../config.yaml"
@@ -46,7 +48,7 @@ def dyna_q(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, 
             # Choose A from S using policy derived from Q
             a = choose_action(Q, s, available_actions, epsilon)
             # Take action A, observe R, S'
-            reward, s_prime, available_actions_prime = observe_R_S_prime(env, a)
+            reward, s_prime, available_actions_prime = ut.observe_R_S_prime(env, a)
             Q[s, a] = calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha)
             model[(s, a)] = (reward, s_prime)
             for _ in range(n_planning):
@@ -58,8 +60,6 @@ def dyna_q(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, 
 
 
 def play_game(game, parameters, results_path):
-    if "SecretEnv" not in game:
-        config = load_config(congig_file, game)
     alpha = parameters["alpha"]
     epsilon = parameters["epsilon"]
     gamma = parameters["gamma"]
@@ -67,11 +67,17 @@ def play_game(game, parameters, results_path):
     n_planning = parameters["n_planning"]
     match game:
         case "LineWorld":
-            config = load_config(congig_file, game)
+            config = ut.load_config(congig_file, game)
             env = lw.LineWorld(config)
         case "GridWorld":
-            config = load_config(congig_file, game)
+            config = ut.load_config(congig_file, game)
             env = gw.GridWorld(config)
+        case "MontyHall1":
+            config = ut.load_config(congig_file, game)
+            env = mh1.MontyHall1(config)
+        case "MontyHall2":
+            config = ut.load_config(congig_file, game)
+            env = mh2.MontyHall2(config)
         case "SecretEnv0":
             env = secret_envs_wrapper.SecretEnv0()
         case "SecretEnv1":
@@ -81,22 +87,24 @@ def play_game(game, parameters, results_path):
         case _:
             print("Game not found")
             return 0
-    Q_optimal = dyna_q(env, alpha, epsilon, gamma, nb_iter, n_planning)
-    Pi = calcul_policy(Q_optimal)
-    env.reset()
-    play_a_game_by_Pi(env, Pi)
-    scored = env.score()
-    save_results_to_pickle(Q_optimal, Pi, scored, results_path)
-
+    Q_optimal = dyna_q(env, alpha, epsilon, gamma, nb_iter)
+    Pi = ut.calcul_policy(Q_optimal)
+    if game == "MontyHall1":
+        ut.play_montyhall1(env, Pi)
+    if game == "MontyHall2":
+        ut.play_montyhall2(env, Pi)
+    else:
+        env.reset()
+        ut.play_a_game_by_Pi(env, Pi)
 
 
 if __name__ == '__main__':
-    game = "SecretEnv0"
+    game = "MontyHall1"
     parameters = {
         "alpha": 0.1,
         "epsilon": 0.1,
         "gamma": 0.999,
-        "nb_iter": 1000,
+        "nb_iter": 10000,
         "n_planning": 10
     }
     results_path = f"../results/{game}_dyna_q.pkl"
