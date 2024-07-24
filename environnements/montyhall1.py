@@ -1,12 +1,5 @@
 import numpy as np
-import random
 from collections import namedtuple
-import yaml
-
-def load_config():
-    with open('config.yaml', 'r') as f:
-        config = yaml.safe_load(f)
-    return config
 
 class MontyHall1:
     def __init__(self, config):
@@ -14,46 +7,95 @@ class MontyHall1:
         self.actions = config['actions']
         self.rewards = config['rewards']
         self.terminals = config['terminals']
-        self.reset()
+        self.transition_matrix = self.create_montyhall1()
+        self.scored = 0
+        self.state = None
+
+        # Ajout des attributs action_space et state_space
         self.action_space = namedtuple('ActionSpace', ['n'])
+        self.state_space = namedtuple('StateSpace', ['n'])
         self.action_space.n = len(self.actions)
+        self.state_space.n = len(self.states)
+        self.reset()
+    
+    def create_montyhall1(self):
+        num_states = len(self.states)
+        p = np.zeros((num_states, len(self.actions), num_states, len(self.rewards)))
+
+        for s in range(num_states):
+            for a in range(len(self.actions)):
+                self.doors = ['goat', 'goat', 'car']
+                np.random.shuffle(self.doors)
+                selected_door = self.states[s]
+                revealed_door = self.reveal_door(selected_door)
+                if a == 1:  # Switch
+                    next_state = [door for door in self.states if door != selected_door and door != revealed_door][0]
+                else:  # Stay
+                    next_state = selected_door
+
+                reward = self.rewards[1] if self.doors[self.states.index(next_state)] == 'car' else self.rewards[0]
+                next_state_idx = self.states.index(next_state)
+                reward_idx = self.rewards.index(reward)
+                p[s, a, next_state_idx, reward_idx] = 1.0
+
+        return p
+    
+    def reveal_door(self, selected_door):
+        available_doors = [door for door in self.states if door != selected_door and self.doors[self.states.index(door)] == 'goat']
+        return np.random.choice(available_doors)
     
     def reset(self):
         self.doors = ['goat', 'goat', 'car']
-        random.shuffle(self.doors)
-        self.selected_door = random.choice(self.states)
-        self.revealed_door = self.reveal_door()
-        self.state = (self.selected_door, self.revealed_door)
+        np.random.shuffle(self.doors)
+        self.state = np.random.choice(self.states)
         return self.state
-    
-    def reveal_door(self):
-        available_doors = [door for door in self.states if door != self.selected_door and self.doors[self.states.index(door)] == 'goat']
-        return random.choice(available_doors)
-    
-    def step(self, action):
+
+    def num_states(self) -> int:
+        return len(self.states)
+
+    def num_actions(self) -> int:
+        return len(self.actions)
+
+    def num_rewards(self) -> int:
+        return len(self.rewards)
+
+    def reward(self, i: int) -> float:
+        return self.rewards[i]
+
+    def p(self, s: int, a: int, s_p: int, r_index: int) -> float:
+        return self.transition_matrix[s, a, s_p, r_index]
+
+    def state_id(self) -> int:
+        return self.states.index(self.state)
+
+    def display(self):
+        print(f"Current State: {self.state}, Doors: {self.doors}")
+
+    def is_forbidden(self, action: int) -> int:
+        return not action in self.actions
+
+    def is_game_over(self) -> bool:
+        return self.state in self.terminals
+
+    def step(self, action: int):
+        if self.is_game_over():
+            return self.state, 0, True, {}
+
+        revealed_door = self.reveal_door(self.state)
         if action == 1:  # Switch
-            self.selected_door = [door for door in self.states if door != self.selected_door and door != self.revealed_door][0]
-        reward = self.rewards[1] if self.doors[self.states.index(self.selected_door)] == 'car' else self.rewards[0]
-        done = True
-        self.state = 'terminal'
-        return self.state, reward, done
+            next_state = [door for door in self.states if door != self.state and door != revealed_door][0]
+        else:  # Stay
+            next_state = self.state
 
-    def render(self):
-        print(f"Doors: {self.doors}, Selected Door: {self.selected_door}, Revealed Door: {self.revealed_door}")
+        reward = self.rewards[1] if self.doors[self.states.index(next_state)] == 'car' else self.rewards[0]
+        self.state = next_state
+        done = self.state in self.terminals
+        return self.state, reward, done, {}
 
-# Charger la configuration
-config = load_config()
-montyhall1_config = config['MontyHall1']
+    def score(self):
+        if self.state in self.terminals:
+            return self.scored
+        return 0
 
-# Tester et visualiser MontyHall1
-if __name__ == "__main__":
-    env = MontyHall1(montyhall1_config)
-    state = env.reset()
-    print(f"Initial State: {state}")
-    done = False
-    while not done:
-        action = random.choice(env.actions)
-        next_state, reward, done = env.step(action)
-        env.render()
-        print(f"State: {state}, Action: {action}, Reward: {reward}, Next State: {next_state}")
-        state = next_state
+    def available_actions(self):
+        return self.actions

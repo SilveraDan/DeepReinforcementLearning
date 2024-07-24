@@ -1,6 +1,6 @@
 import numpy as np
 import random
-from collections import defaultdict
+from collections import defaultdict, deque
 import yaml
 import sys
 import os
@@ -26,28 +26,39 @@ def epsilon_greedy_policy(Q, state, n_actions, epsilon):
     else:
         return np.argmax(Q[state])
 
-def detect_loop(steps, max_repeated_states=5):
+def detect_loop(steps, max_repeated_states=10):
     if len(steps) < max_repeated_states:
         return False
-    recent_states = steps[-max_repeated_states:]
-    return all(state == recent_states[0] for state in recent_states)
+    recent_states = list(steps)
+    return len(set(recent_states)) < len(recent_states)
 
-def off_policy_mc_control(env, num_episodes, gamma=0.99, epsilon=0.2, epsilon_decay=0.99, min_epsilon=0.05, max_steps=100, max_repeated_states=5):
+def off_policy_mc_control(env, num_episodes, gamma=0.99, epsilon=0.2, epsilon_decay=0.99, min_epsilon=0.05, max_steps=100, max_repeated_states=10):
     Q = defaultdict(lambda: np.zeros(env.action_space.n))
     C = defaultdict(lambda: np.zeros(env.action_space.n))
     target_policy = defaultdict(int)
+    state_action_counts = defaultdict(lambda: defaultdict(int))
     
     for ep in range(num_episodes):
         episode = []
         state = env.reset()
         current_epsilon = max(min_epsilon, epsilon * (epsilon_decay ** ep))
-        steps = [state]
+        steps = deque(maxlen=max_repeated_states)
+        steps.append(state)
         
         for t in range(max_steps):
             action = epsilon_greedy_policy(Q, state, env.action_space.n, current_epsilon)
-            next_state, reward, done = env.step(action)
+            step_result = env.step(action)
+            if len(step_result) == 4:
+                next_state, reward, done, _ = step_result
+            else:
+                next_state, reward, done = step_result
+
+            # Pénalité pour chaque étape pour encourager une solution rapide
+            reward -= 0.01
+
             episode.append((state, action, reward))
             steps.append(next_state)
+            state_action_counts[state][action] += 1
             if done or detect_loop(steps, max_repeated_states):
                 break
             state = next_state
@@ -72,8 +83,13 @@ def visualize_policy(env, policy):
     steps = 0
     while True:
         action = policy[state]
-        next_state, reward, done = env.step(action)
-        env.render()
+        step_result = env.step(action)
+        if len(step_result) == 4:
+            next_state, reward, done, _ = step_result
+        else:
+            next_state, reward, done = step_result
+        if hasattr(env, 'render'):
+            env.render()
         print(f"State: {state}, Action: {action}, Reward: {reward}, Next State: {next_state}")
         state = next_state
         steps += 1
