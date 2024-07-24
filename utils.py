@@ -45,8 +45,8 @@ def play_a_game_by_Pi(env, Pi):
     move = 0
     while not env.is_game_over():
         move += 1
-        env.display()
-        print(env.score())
+        #env.display()
+        #print(env.score())
         if env.state_id() in Pi:
             a = Pi[env.state_id()]
             if env.is_forbidden(a):
@@ -59,7 +59,7 @@ def play_a_game_by_Pi(env, Pi):
             a = random.choice(env.available_actions())
             env.step(a)
             random_move += 1
-    env.display()
+    #env.display()
     print(env.score())
     print("a joué : ", random_move, "coup random sur ",move)
     with open('stratégie_optimal.pkl', 'wb') as fichier:
@@ -94,11 +94,11 @@ def update_Q(Q, s, available_actions, env):
     return Q
 
 
-def save_results_to_pickle(Q, Pi, file_path):
+def save_results_to_pickle(Q, Pi, score, file_path):
     # Crée le dossier si nécessaire
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-    new_data = {'Q': Q, 'Pi': Pi}
+    new_data = {'Q': Q, 'Pi': Pi, "score": score}
 
     # Convertir le tableau numpy en liste pour la sérialisation, si nécessaire
     if isinstance(Q, np.ndarray):

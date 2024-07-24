@@ -1,4 +1,6 @@
 import numpy as np
+import random
+from collections import defaultdict
 import yaml
 import sys
 import os
@@ -18,113 +20,88 @@ def load_config(config_path):
         config = yaml.safe_load(f)
     return config
 
-def get_transitions(env, state, action):
-    current_state = state  # Save the current state
-    env.state = state  # Set to the current state
-    if hasattr(env, 'selected_doors'):
-        current_selected_doors = env.selected_doors.copy()  # Save current selected doors for MontyHall2
-    next_state, reward, done = env.step(action)
-    prob = 1.0  # Assuming deterministic transitions for simplicity
-    env.state = current_state  # Reset state to the original after simulating step
-    if hasattr(env, 'selected_doors'):
-        env.selected_doors = current_selected_doors  # Reset selected doors for MontyHall2
-    if next_state == 'terminal':
-        next_state_index = len(env.states)
+def epsilon_greedy_policy(Q, state, n_actions, epsilon):
+    if random.uniform(0, 1) < epsilon:
+        return random.choice(range(n_actions))
     else:
-        next_state_index = env.states.index(next_state) if next_state in env.states else len(env.states)
-    return [(prob, next_state_index, reward)]
+        return np.argmax(Q[state])
 
-class ValueIteration:
-    def __init__(self, env, discount_factor=0.99, theta=0.0001, max_iterations=1000, epsilon=0.1, max_steps=100):
-        self.env = env
-        self.discount_factor = discount_factor
-        self.theta = theta
-        self.max_iterations = max_iterations
-        self.epsilon = epsilon  # Epsilon for exploration
-        self.max_steps = max_steps  # Max steps to detect looping
-        self.value_table = np.zeros(len(env.states) + 1)  # Adding 1 for terminal state
-        self.action_counts = np.zeros((len(env.states) + 1, self.env.action_space.n))  # Tracking action counts
+def detect_loop(steps, max_repeated_states=5):
+    if len(steps) < max_repeated_states:
+        return False
+    recent_states = steps[-max_repeated_states:]
+    return all(state == recent_states[0] for state in recent_states)
 
-    def run(self):
-        iteration = 0
-        while iteration < self.max_iterations:
-            delta = 0
-            for state in range(len(self.env.states)):
-                v = self.value_table[state]
-                max_value = float('-inf')
-                for action in range(self.env.action_space.n):
-                    transitions = get_transitions(self.env, self.env.states[state], action)
-                    value = sum([prob * (reward + self.discount_factor * self.value_table[next_state])
-                                 for prob, next_state, reward in transitions])
-                    # Penalize repeated actions
-                    value -= self.action_counts[state][action] * 0.1  # Penalty factor
-                    max_value = max(max_value, value)
-                self.value_table[state] = max_value
-                delta = max(delta, abs(v - self.value_table[state]))
-            iteration += 1
-            if delta < self.theta:
-                break
-        return self.value_table
+def off_policy_mc_control(env, num_episodes, gamma=0.99, epsilon=0.2, epsilon_decay=0.99, min_epsilon=0.05, max_steps=100, max_repeated_states=5, convergence_threshold=0.001, convergence_check_interval=10):
+    Q = defaultdict(lambda: np.zeros(env.action_space.n))
+    C = defaultdict(lambda: np.zeros(env.action_space.n))
+    target_policy = defaultdict(int)
+    
+    def has_converged(prev_Q, current_Q, threshold):
+        for state in current_Q:
+            if state not in prev_Q:
+                return False
+            if np.max(np.abs(current_Q[state] - prev_Q[state])) > threshold:
+                return False
+        return True
 
-    def extract_policy(self):
-        policy = np.zeros(len(self.env.states) + 1, dtype=int)  # Adding 1 for terminal state
-        for state in range(len(self.env.states)):
-            max_value = float('-inf')
-            best_action = None
-            for action in range(self.env.action_space.n):
-                transitions = get_transitions(self.env, self.env.states[state], action)
-                value = sum([prob * (reward + self.discount_factor * self.value_table[next_state])
-                             for prob, next_state, reward in transitions])
-                # Penalize repeated actions
-                value -= self.action_counts[state][action] * 0.1  # Penalty factor
-                if value > max_value:
-                    max_value = value
-                    best_action = action
-            policy[state] = best_action
-        return policy
-
-    def epsilon_greedy_policy(self, policy):
-        def policy_fn(state):
-            if np.random.rand() < self.epsilon:
-                return np.random.choice(self.env.action_space.n)
+    prev_Q = None
+    for ep in range(num_episodes):
+        episode = []
+        state = env.reset()
+        current_epsilon = max(min_epsilon, epsilon * (epsilon_decay ** ep))
+        steps = [state]
+        
+        for t in range(max_steps):
+            action = epsilon_greedy_policy(Q, state, env.action_space.n, current_epsilon)
+            step_result = env.step(action)
+            if len(step_result) == 4:
+                next_state, reward, done, _ = step_result
             else:
-                return policy[state]
-        return policy_fn
+                next_state, reward, done = step_result
+            episode.append((state, action, reward))
+            steps.append(next_state)
+            if done or detect_loop(steps, max_repeated_states):
+                break
+            state = next_state
+        
+        G = 0
+        W = 1.0
+        for state, action, reward in reversed(episode):
+            G = gamma * G + reward
+            C[state][action] += W
+            Q[state][action] += (W / C[state][action]) * (G - Q[state][action])
+            target_policy[state] = np.argmax(Q[state])
+            if action != target_policy[state]:
+                break
+            W *= 1.0 / ((current_epsilon / env.action_space.n) + (1 - current_epsilon) * (action == target_policy[state]))
+            if W == 0:
+                break
+        
+        if ep % convergence_check_interval == 0:
+            if prev_Q is not None and has_converged(prev_Q, Q, convergence_threshold):
+                print(f"Convergence reached after {ep} episodes.")
+                break
+            prev_Q = {state: np.copy(Q[state]) for state in Q}
 
-    def update_action_counts(self, state, action):
-        self.action_counts[state][action] += 1
+    return Q, target_policy
 
-def visualize_policy(env, policy_fn, vi, max_steps=100):
+def visualize_policy(env, policy):
     state = env.reset()
     steps = 0
-    visited_states_actions = set()
     while True:
-        state_index = env.states.index(state) if state in env.states else len(env.states)
-        action = policy_fn(state_index)
-        
-        # Check for loops and force exploration if stuck
-        if (state_index, action) in visited_states_actions:
-            action = np.random.choice(env.action_space.n)
-        
-        visited_states_actions.add((state_index, action))
-        
-        next_state, reward, done = env.step(action)
-        env.render()
+        action = policy[state]
+        step_result = env.step(action)
+        if len(step_result) == 4:
+            next_state, reward, done, _ = step_result
+        else:
+            next_state, reward, done = step_result
         print(f"State: {state}, Action: {action}, Reward: {reward}, Next State: {next_state}")
-        # Update action counts
-        vi.update_action_counts(state_index, action)
-        if next_state == 'terminal':
-            break
         state = next_state
         steps += 1
-        if done or steps >= max_steps:
+        if done or steps > 100:
             print(f"Episode finished in {steps} steps.")
             break
-        if steps >= vi.max_steps:
-            print(f"Detected potential loop at step {steps}. Changing strategy.")
-            state = env.reset()
-            steps = 0
-            visited_states_actions.clear()
 
 if __name__ == '__main__':
     # Chemin vers le fichier de configuration
@@ -136,54 +113,39 @@ if __name__ == '__main__':
     # Tester l'algorithme pour LineWorld
     lineworld_config = config['LineWorld']
     env = LineWorld(lineworld_config)
-    vi = ValueIteration(env)
-    value_table = vi.run()
-    policy = vi.extract_policy()
-    epsilon_greedy_policy = vi.epsilon_greedy_policy(policy)
-    print("LineWorld Value Table:", value_table)
+    Q, policy = off_policy_mc_control(env, num_episodes=1000)
+    print("LineWorld Q-values:", Q)
     print("LineWorld Policy:", policy)
-    visualize_policy(env, epsilon_greedy_policy, vi)
+    visualize_policy(env, policy)
 
     # Tester l'algorithme pour GridWorld
     gridworld_config = config['GridWorld']
     env = GridWorld(gridworld_config)
-    vi = ValueIteration(env)
-    value_table = vi.run()
-    policy = vi.extract_policy()
-    epsilon_greedy_policy = vi.epsilon_greedy_policy(policy)
-    print("GridWorld Value Table:", value_table)
+    Q, policy = off_policy_mc_control(env, num_episodes=1000)
+    print("GridWorld Q-values:", Q)
     print("GridWorld Policy:", policy)
-    visualize_policy(env, epsilon_greedy_policy, vi)
+    visualize_policy(env, policy)
 
     # Tester l'algorithme pour TwoRoundRPS
     tworoundrps_config = config['TwoRoundRPS']
     env = TwoRoundRPS(tworoundrps_config)
-    vi = ValueIteration(env)
-    value_table = vi.run()
-    policy = vi.extract_policy()
-    epsilon_greedy_policy = vi.epsilon_greedy_policy(policy)
-    print("TwoRoundRPS Value Table:", value_table)
+    Q, policy = off_policy_mc_control(env, num_episodes=2000, gamma=0.99, epsilon=0.2, epsilon_decay=0.99, min_epsilon=0.05)
+    print("TwoRoundRPS Q-values:", Q)
     print("TwoRoundRPS Policy:", policy)
-    visualize_policy(env, epsilon_greedy_policy, vi)
+    visualize_policy(env, policy)
 
     # Tester l'algorithme pour MontyHall1
     montyhall1_config = config['MontyHall1']
     env = MontyHall1(montyhall1_config)
-    vi = ValueIteration(env)
-    value_table = vi.run()
-    policy = vi.extract_policy()
-    epsilon_greedy_policy = vi.epsilon_greedy_policy(policy)
-    print("MontyHall1 Value Table:", value_table)
+    Q, policy = off_policy_mc_control(env, num_episodes=1000)
+    print("MontyHall1 Q-values:", Q)
     print("MontyHall1 Policy:", policy)
-    visualize_policy(env, epsilon_greedy_policy, vi)
+    visualize_policy(env, policy)
 
     # Tester l'algorithme pour MontyHall2
     montyhall2_config = config['MontyHall2']
     env = MontyHall2(montyhall2_config)
-    vi = ValueIteration(env)
-    value_table = vi.run()
-    policy = vi.extract_policy()
-    epsilon_greedy_policy = vi.epsilon_greedy_policy(policy)
-    print("MontyHall2 Value Table:", value_table)
+    Q, policy = off_policy_mc_control(env, num_episodes=1000)
+    print("MontyHall2 Q-values:", Q)
     print("MontyHall2 Policy:", policy)
-    visualize_policy(env, epsilon_greedy_policy, vi)
+    visualize_policy(env, policy)
