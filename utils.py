@@ -96,11 +96,11 @@ def update_Q(Q, s, available_actions, env):
     return Q
 
 
-def save_results_to_pickle(Q, Pi, score, file_path):
+def save_results_to_pickle(params, Q, Pi, score, file_path):
     # Crée le dossier si nécessaire
     os.makedirs(os.path.dirname(file_path), exist_ok=True)
 
-    new_data = {'Q': Q, 'Pi': Pi, "score": score}
+    new_data = {'params': params, 'Q': Q, 'Pi': Pi, "score": score}
 
     # Convertir le tableau numpy en liste pour la sérialisation, si nécessaire
     if isinstance(Q, np.ndarray):

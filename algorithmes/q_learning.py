@@ -8,7 +8,7 @@ import environnements.montyhall2 as mh2
 import utils as ut
 
 
-congig_file = "../config.yaml"
+congig_file = "./config.yaml"
 
 
 def calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha, env):
@@ -21,7 +21,7 @@ def calcul_Q(Q, s, s_prime, a, reward, available_actions_prime, gamma, alpha, en
 def q_learning(env, alpha: float = 0.1, epsilon: float = 0.1, gamma: float = 0.999, nb_iter: int = 100000):
     Q = {}
     # Loop for each episode
-    for _ in tqdm(range(nb_iter)):
+    for _ in range(nb_iter):
         #Initialize S
         env.reset()
         # Loop for each step epiosde
@@ -71,13 +71,15 @@ def play_game(game, parameters, results_path):
             return 0
     Q_optimal = q_learning(env, alpha, epsilon, gamma, nb_iter)
     Pi = ut.calcul_policy(Q_optimal)
-    if game == "MontyHall1":
-        ut.play_montyhall1(env, Pi)
-    if game == "MontyHall2":
-        ut.play_montyhall2(env, Pi)
-    else:
-        env.reset()
-        ut.play_a_game_by_Pi(env, Pi)
+    score = env.score()
+    ut.save_results_to_pickle(parameters, Q_optimal, Pi, score, results_path)
+    # if game == "MontyHall1":
+    #     #ut.play_montyhall1(env, Pi)
+    # if game == "MontyHall2":
+    #     #ut.play_montyhall2(env, Pi)
+    # else:
+    #     #env.reset()
+    #     #ut.play_a_game_by_Pi(env, Pi)
 
 
 if __name__ == '__main__':
